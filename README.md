@@ -16,6 +16,10 @@ Ember reads the token Claude Code keeps in `%USERPROFILE%\.claude\.credentials.j
 
 The token only lasts a few hours. Claude Code refreshes it while it's running, so Ember leaves it alone then. If Claude Code isn't running when the token is about to expire, Ember refreshes it itself and writes the new one back to the credentials file for Claude Code to pick up.
 
+## Installing
+
+Grab the zip from the [latest release](https://github.com/JohnGJ/ember/releases/latest), unzip it anywhere, and run `Ember.exe`. Tick Start with Windows in the right-click menu if you want it back after a reboot.
+
 ## Building
 
 ```
