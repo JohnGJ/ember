@@ -6,8 +6,8 @@ namespace Ember;
 
 sealed class TrayApp : ApplicationContext
 {
-    static readonly TimeSpan RefreshEvery = TimeSpan.FromMinutes(1);
-    static readonly TimeSpan RetryAtMost = TimeSpan.FromMinutes(10);
+    static readonly TimeSpan RefreshEvery = TimeSpan.FromMinutes(5);
+    static readonly TimeSpan RetryAtMost = TimeSpan.FromMinutes(30);
 
     readonly TrayIcon tray = new();
     readonly UsagePopup popup = new();
@@ -18,6 +18,7 @@ sealed class TrayApp : ApplicationContext
     Usage? usage;
     string? error;
     DateTimeOffset lastFetch = DateTimeOffset.MinValue;
+    DateTimeOffset nextFetch = DateTimeOffset.MinValue;
     int failures;
     bool fetching;
 
@@ -59,10 +60,8 @@ sealed class TrayApp : ApplicationContext
         popup.Tick();
 
         var now = DateTimeOffset.Now;
-        var interval = failures == 0 ? RefreshEvery : TimeSpan.FromTicks(Math.Min(RefreshEvery.Ticks << failures, RetryAtMost.Ticks));
-        var due = now - lastFetch >= interval;
         var reset = usage?.Limits.Any(l => l.ResetsAt > lastFetch && l.ResetsAt <= now) ?? false;
-        if (due || reset) _ = RefreshAsync();
+        if (now >= nextFetch || reset) _ = RefreshAsync();
     }
 
     async Task RefreshAsync()
@@ -70,11 +69,16 @@ sealed class TrayApp : ApplicationContext
         if (fetching) return;
         fetching = true;
         lastFetch = DateTimeOffset.Now;
+        nextFetch = lastFetch + RefreshEvery;
         try
         {
             usage = await client.FetchAsync();
             error = null;
             failures = 0;
+        }
+        catch (RateLimitedException e)
+        {
+            Failed(e.Message, e.RetryAfter);
         }
         catch (UsageException e)
         {
@@ -99,10 +103,14 @@ sealed class TrayApp : ApplicationContext
         Render();
     }
 
-    void Failed(string message)
+    // Each failure doubles the wait, up to RetryAtMost, unless the server said how long.
+    void Failed(string message, TimeSpan? retryAfter = null)
     {
         error = message;
-        failures = Math.Min(failures + 1, 4);
+        failures = Math.Min(failures + 1, 6);
+        var backoff = TimeSpan.FromTicks(Math.Min(RefreshEvery.Ticks << failures, RetryAtMost.Ticks));
+        if (retryAfter > backoff) backoff = retryAfter.Value;
+        nextFetch = DateTimeOffset.Now + backoff;
     }
 
     void Render()

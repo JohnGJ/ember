@@ -7,6 +7,11 @@ namespace Ember;
 
 sealed class UsageException(string message) : Exception(message);
 
+sealed class RateLimitedException(TimeSpan? retryAfter) : Exception("The usage API is rate limiting Ember.")
+{
+    public TimeSpan? RetryAfter { get; } = retryAfter;
+}
+
 sealed class UsageClient
 {
     const string Endpoint = "https://api.anthropic.com/api/oauth/usage";
@@ -29,7 +34,8 @@ sealed class UsageClient
             case HttpStatusCode.Unauthorized:
                 throw new UsageException("Claude Code's sign-in was rejected. Run claude to sign in again.");
             case HttpStatusCode.TooManyRequests:
-                throw new UsageException("The usage API is rate limiting Ember. Backing off.");
+                var retry = response.Headers.RetryAfter;
+                throw new RateLimitedException(retry?.Delta ?? (retry?.Date - DateTimeOffset.UtcNow));
         }
         response.EnsureSuccessStatusCode();
 

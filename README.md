@@ -12,7 +12,7 @@ The ring is the weekly limit, filling clockwise from the bottom. The centre fill
 - [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Claude Code, signed in with a Claude subscription
 
-Ember reads the token Claude Code keeps in `%USERPROFILE%\.claude\.credentials.json` (or `%CLAUDE_CONFIG_DIR%` if set) and polls the same endpoint Claude Code's `/usage` command uses, once a minute.
+Ember reads the token Claude Code keeps in `%USERPROFILE%\.claude\.credentials.json` (or `%CLAUDE_CONFIG_DIR%` if set) and polls the same endpoint Claude Code's `/usage` command uses, every five minutes. Left-click, or Refresh in the menu, fetches straight away. If the API answers with a rate limit, Ember backs off for as long as it's told to.
 
 The token only lasts a few hours. Claude Code refreshes it while it's running, so Ember leaves it alone then. If Claude Code isn't running when the token is about to expire, Ember refreshes it itself and writes the new one back to the credentials file for Claude Code to pick up.
 
